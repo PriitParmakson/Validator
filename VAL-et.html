@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Validaator</title>
+  <meta name="viewport" content="width=device-width" initial-scale="1">
+	
+	<!-- NB! Kuna pilvest antakse https-ga, siis kõik laadimised ka sellega. -->
+	
+	<!-- Underscore -->
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.8.3/underscore-min.js"></script>
+	
+	<!-- JQuery (necessary for Bootstrap's JavaScript plugins) -->
+  <script src="https://code.jquery.com/jquery.min.js"></script>
+	<!-- Bootstrap -->
+  <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap-theme.min.css">
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+
+	<!-- Parse -->
+  <script src="https://www.parsecdn.com/js/parse-1.2.18.min.js"></script>
+	 	
+	<link rel='stylesheet' href='STIILID.css'>
+	
+	<style>
+		.yksus { margin-right: 1em; }
+	</style>
+	
+	<script>
+$(document).ready(function() {
+
+	var	errorsFound = 0;
+
+	// 
+	Parse.initialize("pFONhSXIrlDhsH1RAzV8m2CoQiuhPw4AYLAbCYTb",
+								 "F6QM6RMOoDQojxZuwN3LOt7GTDQ3xueRfX1qYyg8");
+	// Parse.Cloud.run korral Javascript SDK võti
+	// Pilvefunktsioone on võimalik välja kutsuda ka REST API kaudu	
+	
+	// Sule teated
+	function suleTeated() {
+		$('#VEATEADE').html('');
+		$('#VEABLOKK').addClass('hidden');
+		$('#EDUTEADE').html('');
+		$('#EDUBLOKK').addClass('hidden');	
+	}
+
+	// Selgituse ümberlülitamine
+	$('#selgitusNupp').click(function(event){
+		$(this).button('toggle');
+		var t = $('#selgitusTekst');
+		if (t.hasClass('hidden')) {
+			t.removeClass('hidden');
+		}
+		else {
+			t.addClass('hidden');
+		}
+	});
+	
+	// Kuva tipp
+	function kuvaTipp(tipp, tipuNr) {
+		var tippKuva = $('<p><span>Node ' + tipuNr.toString() + ': </span></p>');
+		$('#KUVA').append(tippKuva);
+		// Kontroll, et kontekstiks on CPSV
+		if (tipp['@context'] && tipp['@context']['CPSV']) {			
+			var kontekstKuva = $('<code>@contekst CPSV? OK</code>').addClass('yksus');
+			tippKuva.append(kontekstKuva);
+		}
+		else {
+			errorsFound++;
+			var kontekstKuva = $('<code>** ERROR: @context not found<code>');
+			tippKuva.append(kontekstKuva);
+			return
+		}
+		// Kontroll, et on id
+		if (tipp['@id']) {			
+			var idKuva = $('<code>@id? OK</code>').addClass('yksus');
+			tippKuva.append(idKuva);
+		}
+		else {
+			errorsFound++;
+			var idKuva = $('<code>** ERROR: @id not found<code>');
+			tippKuva.append(idKuva);
+			return
+		}
+		// Kontroll, et on tüüp
+		if (tipp['@type']) {			
+			var typeKuva = $('<code>@type? OK</code>').addClass('yksus');
+			tippKuva.append(typeKuva);
+		}	
+		else {
+			errorsFound++;
+			var typeKuva = $('<code>** ERROR: @type not found<code>');
+			tippKuva.append(typeKuva);
+			return
+		}
+		// Kontrollid vastavalt tüübile
+		switch (tipp['@type']) {
+			case 'CPSV:LegalEntity':
+				var typeKuva = $('<code>Legal Entity</code>').addClass('yksus'); 
+				tippKuva.append(typeKuva);
+				break;
+			case 'CPSV:PublicService':
+				var typeKuva = $('<code>Public Service</code>').addClass('yksus'); 
+				tippKuva.append(typeKuva);
+				// Kontrolli teenuse puhul nimetuse olemasolu
+				if (tipp['CPSV:Name']) {
+					var nameKuva = $('<code>Name OK</code>');
+					tippKuva.append(nameKuva);				
+				}
+				else {
+					// Keerukam kontroll: tipp[x]['@type'] == 'CPSV:Name'
+					var nimiOn = false;
+					_.each(tipp, function(element) {
+						if (element['@type'] == 'CPSV:Name') {
+							nimiOn = true;
+						}
+					});
+					if (!nimiOn) {
+						errorsFound++;
+						var nameKuva = $('<code>** ERROR: Name of Service not found</code>');
+						tippKuva.append(nameKuva);
+						return									
+					}
+				}
+				break;
+			default:
+				errorsFound++;
+				var typeKuva = $('<code>** ERROR: @type not recognized</code>');
+				tippKuva.append(typeKuva);
+				return				
+		}
+	}
+	
+	// Töötleb JSON parsitud kujul faili
+	function tootleParsedJSON(parsed) {
+		parsed = [].concat(parsed); // Tagada, et parsed on massiiv
+			
+		for (var i = 0; i < parsed.length; i++) {
+			// Tipu töötlemine
+			kuvaTipp(parsed[i], i + 1);
+			}
+			
+		// Kokkuvõte
+		var kokkuvote;
+		if (errorsFound > 0) {
+			kokkuvote = errorsFound.toString() + ' error(s) found. NOT CONFORMANT'
+		}
+		else {
+			kokkuvote = 'No errors found. CONFORMANT';
+		}
+		var kokkuKuva = $('<p><code>' + kokkuvote + '</code></p>');
+		$('#KUVA').append(kokkuKuva);
+	}
+	
+	// Pilvefunktsioonist saadud faili esmane töötlus
+	function tootleFail(data) {
+		// Vt http://stackoverflow.com/questions/1488866/how-to-replace-%C3%AF-%C2%BD-in-a-string
+		var trimmitud = data.replace('ï»¿', '');
+		
+		try {
+			var parsed = JSON.parse(trimmitud);
+			var teade = $('<code>Parsing JSON file.. OK');
+			$('#KUVA').append(teade);
+			tootleParsedJSON(parsed);
+		}
+		catch(error) {
+			var teade = $('<code>Parsing JSON file.. Not recognized as JSON</code>');
+			$('#KUVA').append(teade);
+			return
+		}		
+	}
+	
+	// Valideeri
+	$('#vaata').click(function(event){
+		suleTeated();
+		// Puhasta eelmise tulem
+		$('#KUVA').html('');
+		var teade = $('<p>Processing...</p>');
+		$('#KUVA').append(teade);
+		errorsFound = 0;
+
+		var aadress = $('#URL').val();
+		console.log('Asun töötlema faili: ' + aadress);
+		// Kontrolli, et URL on sisestatud
+		if (aadress.length == 0) {
+			$('#VEATEADE').html('Sisestage kirjelduse URL');
+			$('#VEABLOKK').removeClass('hidden');
+			return
+		}
+		
+		// Kuva ketraja
+		$('#KETRAJA').removeClass('hidden');
+		$('#ketrajaIkoon').addClass('spinning');
+		
+		// Erista meta.ria.ee tavalisse ajax-sse
+		if (aadress.indexOf('https://meta.ria.ee') > -1) {
+		// Loe fail
+		// Kliendirakendusest lugemise piirang on see, et faili server peab pakkuma CORS-i.
+		$.ajax({
+			url : aadress,
+			type : 'GET',
+			contentType : 'text/plain',
+			crossDomain: true,
+			error : function(xhr, status, error) {
+				// console.log(JSON.stringify(xhr.responseText));
+				var abi = JSON.stringify(xhr.status) + ' ' + JSON.stringify(xhr.statusText);
+				console.log('Lugemine ebaõnnestus: ' + abi);
+				console.log('status: ' + status);
+				console.log('error: ' + error);
+				$('#VEATEADE').html('Lugemine ebaõnnestus: ' + abi);
+				$('#VEABLOKK').removeClass('hidden');
+			},
+			success : function(data) {
+				// kuvaTeenused('#teenusteList', '#teenusteMSG', JSON.stringify(data));
+				// $('#EDUTEADE').html('Fail loetud');
+				// $('#EDUBLOKK').removeClass('hidden');
+				tootleFail(data);
+			}
+		});	
+		
+		}
+		
+		else { // teised domeenid
+
+		// Loe fail pilvefunktsiooni kaudu
+		Parse.Cloud.run('loeFail', {fnimi: aadress}, {
+			success: function(result) {
+				tootleFail(result.text);
+			},
+			error: function(error) {
+				$('#VEATEADE').html('Lugemine ebaõnnestus: ' + JSON.stringify(error));
+				$('#VEABLOKK').removeClass('hidden');
+			}
+		}); 
+		
+		}
+		
+		// Eemalda ketraja
+		$('#KETRAJA').addClass('hidden');
+		$('ketrajaIkoon').removeClass('spinning');
+		
+	});
+	
+	
+});
+
+	</script>
+		
+</head>
+
+  <body>
+    <div class="container">
+      <div class="row">
+        <div class="col-sm-10 col-md-10 col-lg-10">
+
+	<p><span class='pull-left'>Eesti keeles <a href='https://meta.ria.ee/VAL-en.html'>In English</a></span>	
+	<span class='pull-right prototyyp'>Eksperimentaalne</span></p>
+	<p style='clear: both;'>&nbsp;</p>
+	
+	<!-- h2>Avalike teenuste kirjelduste vaataja-valideerija</h2 -->
+	
+	<form style='margin: 1em 0 1em 0;'>
+		<div class="form-group">
+				<input  style='font-size: 18px;' name="URL" class="form-control" id="URL" placeholder="URL" type="url">
+		</div>
+		<p class='text-center'>
+			<a id='vaata'  href="#" class="rakendus btn btn-lg btn-default">Valideeri&nbsp;<span class="glyphicon glyphicon-search"></span></a>
+		</p>
+	</form>
+	<div id='EDUBLOKK' class="alert alert-success hidden">
+		<a href="#" class="close" data-dismiss="alert">&times;</a>
+		<span id='EDUTEADE'></span>
+	</div>	
+	<div id='VEABLOKK' class="alert alert-danger hidden">
+	  <a href="#" class="close" data-dismiss="alert">&times;</a>
+		<span id='VEATEADE'></span>
+	</div>	
+	<p style='clear: both;'>&nbsp;</p>
+
+	<div id='KETRAJA' class='text-center hidden'>
+		<button class="btn btn-lg btn-warning">
+			<span id='ketrajaIkoon' class="glyphicon glyphicon-refresh spinning"></span> Loading...    
+		</button>
+	</div>
+	
+	<div id='KUVA'>
+	</div>
+	
+	<hr/>
+	<p class='text-center'>
+		<a id='selgitusNupp'  href="#" class="rakendus btn btn-lg btn-default">Abi ja selgitus&nbsp;<span class="glyphicon glyphicon-triangle-bottom"></span></a>
+	</p>
+	
+	<div id='selgitusTekst' class='hidden'>
+		<p>Ei tea ühtegi kirjelduste faili? Proovi: <code>https://meta.ria.ee/teenused.json</code> või 
+		<code>https://rawgit.com/andreskytt/ee_service/master/small_sample.json</code> või 
+		<code>https://rawgit.com/andreskytt/ee_service/master/mkm_sample.json</code></p>
+
+		<p>Andmed peavad olema esitatud vastavalt <a href='https://github.com/andreskytt/ee_service/blob/master/format.md' target='_new'>avalike teenuste kirjeldusvormingule</a>, mis põhineb lingitud andmete keelele <a href='http://json-ld.org/' target='_new'>JSON-LD 1.0</a> ja <a href='https://joinup.ec.europa.eu/asset/core_vocabularies/asset_release/core-vocabularies-v11' target='_new'>EL avalike teenuste tuumsõnastikule</a>. Kirjelduste fail peab olema avalikult veebis välja pandud. Sisestage veebiaadress (URL), kus kirjeldus(ed) on välja pandud ja vajutage "Valideeri". Kontrollitakse kirjelduse vastavust kirjeldusvormingu nõuetele ja väljastatakse vastavusraport.</p>
+		<hr/>
+	</div>
+	
+	<p style='margin-top:5em'><span class='pull-left'>Riigi Infosüsteemi Amet, 2015</span>
+		<span class='pull-right'><a href=''>Leidsid vea? Ettepanek?</span>
+	</p>
+	
+	<p><span class='pull-left'>Eesti keeles <a href='https://meta.ria.ee/VAL-en.html'>In English</a></span>	
+	<span class='pull-right prototyyp'>Eksperimentaalne</span></p>
+	<p style='clear: both;'>&nbsp;</p>	
+	
+	</div></div><!-- col row -->		
+  </div><!-- container -->
+		
+  </body>
+</html>
