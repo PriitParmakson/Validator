@@ -24,6 +24,7 @@
 	
 	<style>
 		.yksus { margin-right: 1em; }
+		.taustaviide { color: Gray !important; } 
 	</style>
 	
 	<script>
@@ -56,6 +57,18 @@ $(document).ready(function() {
 			t.addClass('hidden');
 		}
 	});
+
+	// Kuva ketraja
+	function kuvaKetraja() {
+		$('#KETRAJA').removeClass('hidden');
+		$('#ketrajaIkoon').addClass('spinning');		
+	}
+	
+	// Eemalda ketraja
+	function eemaldaKetraja() {
+		$('#KETRAJA').addClass('hidden');
+		$('ketrajaIkoon').removeClass('spinning');	
+	}
 	
 	// Kuva tipp
 	function kuvaTipp(tipp, tipuNr) {
@@ -176,8 +189,8 @@ $(document).ready(function() {
 		suleTeated();
 		// Puhasta eelmise tulem
 		$('#KUVA').html('');
-		var teade = $('<p>Processing...</p>');
-		$('#KUVA').append(teade);
+		// var teade = $('<p>Processing...</p>');
+		// $('#KUVA').append(teade);
 		errorsFound = 0;
 
 		var aadress = $('#URL').val();
@@ -189,9 +202,7 @@ $(document).ready(function() {
 			return
 		}
 		
-		// Kuva ketraja
-		$('#KETRAJA').removeClass('hidden');
-		$('#ketrajaIkoon').addClass('spinning');
+		kuvaKetraja();
 		
 		// Erista meta.ria.ee tavalisse ajax-sse
 		if (aadress.indexOf('https://meta.ria.ee') > -1) {
@@ -210,12 +221,14 @@ $(document).ready(function() {
 				console.log('error: ' + error);
 				$('#VEATEADE').html('Lugemine ebaõnnestus: ' + abi);
 				$('#VEABLOKK').removeClass('hidden');
+				eemaldaKetraja();
 			},
 			success : function(data) {
 				// kuvaTeenused('#teenusteList', '#teenusteMSG', JSON.stringify(data));
 				// $('#EDUTEADE').html('Fail loetud');
 				// $('#EDUBLOKK').removeClass('hidden');
 				tootleFail(data);
+				eemaldaKetraja();
 			}
 		});	
 		
@@ -227,19 +240,17 @@ $(document).ready(function() {
 		Parse.Cloud.run('loeFail', {fnimi: aadress}, {
 			success: function(result) {
 				tootleFail(result.text);
+				eemaldaKetraja();
 			},
 			error: function(error) {
 				$('#VEATEADE').html('Lugemine ebaõnnestus: ' + JSON.stringify(error));
 				$('#VEABLOKK').removeClass('hidden');
+				eemaldaKetraja();
 			}
 		}); 
 		
 		}
-		
-		// Eemalda ketraja
-		$('#KETRAJA').addClass('hidden');
-		$('ketrajaIkoon').removeClass('spinning');
-		
+				
 	});
 	
 	
@@ -279,8 +290,8 @@ $(document).ready(function() {
 	<p style='clear: both;'>&nbsp;</p>
 
 	<div id='KETRAJA' class='text-center hidden'>
-		<button class="btn btn-lg btn-warning">
-			<span id='ketrajaIkoon' class="glyphicon glyphicon-refresh spinning"></span> Loading...    
+		<button class="btn btn-lg">
+			<span id='ketrajaIkoon' class="glyphicon glyphicon-refresh"></span> Loading...    
 		</button>
 	</div>
 	
@@ -295,18 +306,15 @@ $(document).ready(function() {
 	<div id='selgitusTekst' class='hidden'>
 		<p>Ei tea ühtegi kirjelduste faili? Proovi: <code>https://meta.ria.ee/teenused.json</code> või 
 		<code>https://rawgit.com/andreskytt/ee_service/master/small_sample.json</code> või 
-		<code>https://rawgit.com/andreskytt/ee_service/master/mkm_sample.json</code></p>
+		<code>https://rawgit.com/andreskytt/ee_service/master/mkm_sample.json</code> (või isegi <code>http://www.tlu.ee/~priitp/teenused.json</code>)</p>
 
 		<p>Andmed peavad olema esitatud vastavalt <a href='https://github.com/andreskytt/ee_service/blob/master/format.md' target='_new'>avalike teenuste kirjeldusvormingule</a>, mis põhineb lingitud andmete keelele <a href='http://json-ld.org/' target='_new'>JSON-LD 1.0</a> ja <a href='https://joinup.ec.europa.eu/asset/core_vocabularies/asset_release/core-vocabularies-v11' target='_new'>EL avalike teenuste tuumsõnastikule</a>. Kirjelduste fail peab olema avalikult veebis välja pandud. Sisestage veebiaadress (URL), kus kirjeldus(ed) on välja pandud ja vajutage "Valideeri". Kontrollitakse kirjelduse vastavust kirjeldusvormingu nõuetele ja väljastatakse vastavusraport.</p>
 		<hr/>
 	</div>
 	
 	<p style='margin-top:5em'><span class='pull-left'>Riigi Infosüsteemi Amet, 2015</span>
-		<span class='pull-right'><a href=''>Leidsid vea? Ettepanek?</span>
+		<span class='pull-right'><a href=''><a class='taustaviide' href='https://github.com/PriitParmakson/Validator/issues'>Probleem? Ettepanek?</a></span>
 	</p>
-	
-	<p><span class='pull-left'>Eesti keeles <a href='https://meta.ria.ee/VAL-en.html'>In English</a></span>	
-	<span class='pull-right prototyyp'>Eksperimentaalne</span></p>
 	<p style='clear: both;'>&nbsp;</p>	
 	
 	</div></div><!-- col row -->		
